@@ -1,20 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   render,
-  renderFilled,
   resolveColors,
   DEFAULT_PALETTE,
-  DEFAULT_FONT,
-  DEFAULT_DIRECTION,
   type RenderOptions,
-  type RenderInkOptions,
 } from '../src/lib.js';
 
 // Mock the dependencies
-vi.mock('../src/renderer.js', () => ({
-  renderLogo: vi.fn().mockResolvedValue('mocked ascii art'),
-}));
-
 vi.mock('../src/InkRenderer.js', () => ({
   renderInkLogo: vi.fn().mockResolvedValue(undefined),
 }));
@@ -25,25 +17,20 @@ vi.mock('../src/palettes.js', async () => {
     ...actual,
     resolvePalette: vi.fn().mockImplementation((name: string) => {
       const palettes: Record<string, string[] | null> = {
-        'grad-blue': ['#4ea8ff', '#7f88ff'],
         sunset: ['#ff9966', '#ff5e62', '#ffa34e'],
         invalid: null,
       };
       return palettes[name] || null;
     }),
-    getDefaultPalette: vi.fn().mockReturnValue(['#4ea8ff', '#7f88ff']),
   };
 });
 
-import { renderLogo } from '../src/renderer.js';
 import { renderInkLogo } from '../src/InkRenderer.js';
 
 describe('lib', () => {
   describe('constants', () => {
     it('should have correct default values', () => {
-      expect(DEFAULT_PALETTE).toBe('grad-blue');
-      expect(DEFAULT_FONT).toBe('Standard');
-      expect(DEFAULT_DIRECTION).toBe('vertical');
+      expect(DEFAULT_PALETTE).toBe('sunset');
     });
   });
 
@@ -55,8 +42,8 @@ describe('lib', () => {
     });
 
     it('should resolve valid palette names', () => {
-      const result = resolveColors('grad-blue');
-      expect(result).toEqual(['#4ea8ff', '#7f88ff']);
+      const result = resolveColors('sunset');
+      expect(result).toEqual(['#ff9966', '#ff5e62', '#ffa34e']);
     });
 
     it('should resolve sunset palette', () => {
@@ -76,31 +63,25 @@ describe('lib', () => {
   });
 
   describe('render', () => {
-    it('should call renderLogo with default options', async () => {
+    it('should call renderInkLogo with default sunset palette', async () => {
       await render('TEST');
 
-      expect(renderLogo).toHaveBeenCalledWith(
+      expect(renderInkLogo).toHaveBeenCalledWith(
         'TEST',
-        ['#4ea8ff', '#7f88ff'],
-        DEFAULT_FONT,
-        DEFAULT_DIRECTION
+        ['#ff9966', '#ff5e62', '#ffa34e']
       );
     });
 
-    it('should call renderLogo with custom options', async () => {
+    it('should call renderInkLogo with custom palette', async () => {
       const options: RenderOptions = {
         palette: 'sunset',
-        font: 'Big',
-        direction: 'horizontal',
       };
 
       await render('CUSTOM', options);
 
-      expect(renderLogo).toHaveBeenCalledWith(
+      expect(renderInkLogo).toHaveBeenCalledWith(
         'CUSTOM',
-        ['#ff9966', '#ff5e62', '#ffa34e'],
-        'Big',
-        'horizontal'
+        ['#ff9966', '#ff5e62', '#ffa34e']
       );
     });
 
@@ -108,88 +89,24 @@ describe('lib', () => {
       const customColors = ['#ff0000', '#00ff00'];
       const options: RenderOptions = {
         palette: customColors,
-        direction: 'diagonal',
       };
 
       await render('COLORS', options);
 
-      expect(renderLogo).toHaveBeenCalledWith(
-        'COLORS',
-        customColors,
-        DEFAULT_FONT,
-        'diagonal'
-      );
-    });
-
-    it('should return the result from renderLogo', async () => {
-      const result = await render('TEST');
-      expect(result).toBe('mocked ascii art');
-    });
-
-    it('should handle partial options', async () => {
-      await render('PARTIAL', { palette: 'sunset' });
-
-      expect(renderLogo).toHaveBeenCalledWith(
-        'PARTIAL',
-        ['#ff9966', '#ff5e62', '#ffa34e'],
-        DEFAULT_FONT,
-        DEFAULT_DIRECTION
-      );
-    });
-  });
-
-  describe('renderFilled', () => {
-    it('should call renderInkLogo with default palette', async () => {
-      await renderFilled('TEST');
-
-      expect(renderInkLogo).toHaveBeenCalledWith('TEST', [
-        '#4ea8ff',
-        '#7f88ff',
-      ]);
-    });
-
-    it('should call renderInkLogo with custom palette', async () => {
-      const options: RenderInkOptions = {
-        palette: 'sunset',
-      };
-
-      await renderFilled('FILLED', options);
-
-      expect(renderInkLogo).toHaveBeenCalledWith('FILLED', [
-        '#ff9966',
-        '#ff5e62',
-        '#ffa34e',
-      ]);
-    });
-
-    it('should handle custom color arrays', async () => {
-      const customColors = ['#ff0000', '#00ff00', '#0000ff'];
-      const options: RenderInkOptions = {
-        palette: customColors,
-      };
-
-      await renderFilled('COLORS', options);
-
       expect(renderInkLogo).toHaveBeenCalledWith('COLORS', customColors);
     });
 
-    it('should return void (Promise<void>)', async () => {
-      const result = await renderFilled('TEST');
+    it('should return void', async () => {
+      const result = await render('TEST');
       expect(result).toBeUndefined();
     });
   });
 
   describe('error handling', () => {
-    it('should handle errors from renderLogo', async () => {
-      vi.mocked(renderLogo).mockRejectedValueOnce(new Error('Figlet error'));
-
-      await expect(render('TEST')).rejects.toThrow('Figlet error');
-    });
-
     it('should handle errors from renderInkLogo', async () => {
       vi.mocked(renderInkLogo).mockRejectedValueOnce(new Error('Ink error'));
 
-      await expect(renderFilled('TEST')).rejects.toThrow('Ink error');
+      await expect(render('TEST')).rejects.toThrow('Ink error');
     });
   });
 });

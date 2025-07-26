@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -8,54 +8,8 @@ const __dirname = dirname(__filename);
 const cliPath = join(__dirname, '..', 'src', 'index.ts');
 
 describe('CLI', () => {
-  let originalExit: typeof process.exit;
-  let exitCode: number | undefined;
-
-  beforeEach(() => {
-    // Mock process.exit to capture exit codes
-    originalExit = process.exit;
-    exitCode = undefined;
-    process.exit = vi.fn((code?: number) => {
-      exitCode = code;
-      throw new Error(`process.exit(${code})`);
-    }) as any;
-  });
-
-  afterEach(() => {
-    process.exit = originalExit;
-  });
-
-  describe('--list-palettes', () => {
-    it('should list palettes without requiring text argument', () => {
-      try {
-        const output = execSync(`npx tsx ${cliPath} --list-palettes`, {
-          encoding: 'utf-8',
-        });
-        expect(output).toContain('Available palettes:');
-        expect(output).toContain('sunset');
-        expect(output).toContain('ocean');
-        expect(output).toContain('fire');
-      } catch (error: any) {
-        // If the command fails, it should not be due to missing text argument
-        expect(error.message).not.toContain('missing required argument');
-        expect(error.message).not.toContain('text');
-      }
-    });
-
-    it('should work with -l short option', () => {
-      try {
-        const output = execSync(`npx tsx ${cliPath} -l`, { encoding: 'utf-8' });
-        expect(output).toContain('Available palettes:');
-      } catch (error: any) {
-        // If the command fails, it should not be due to missing text argument
-        expect(error.message).not.toContain('missing required argument');
-        expect(error.message).not.toContain('text');
-      }
-    });
-  });
-
   describe('text argument', () => {
-    it('should require text argument when not using --list-palettes', () => {
+    it('should require text argument', () => {
       try {
         execSync(`npx tsx ${cliPath}`, { encoding: 'utf-8', stdio: 'pipe' });
         // Should not reach here
@@ -63,22 +17,38 @@ describe('CLI', () => {
       } catch (error: any) {
         // Should fail with appropriate error
         expect(error.stderr || error.message).toMatch(
-          /text is required|missing required argument/i
+          /text is required/i
         );
       }
     });
 
-    it('should accept text argument for normal operation', () => {
+    it('should accept text argument and render filled logo', () => {
       try {
-        const output = execSync(`npx tsx ${cliPath} "TEST" --no-color`, {
+        const output = execSync(`npx tsx ${cliPath} "TEST"`, {
           encoding: 'utf-8',
+          timeout: 5000,
         });
-        // The output should contain ASCII art (not the literal word TEST)
+        // The output should contain filled characters (block characters)
         expect(output.length).toBeGreaterThan(0);
-        expect(output).toMatch(/[_|\/\\]/); // ASCII art characters
+        // Filled rendering uses block characters, not traditional ASCII art
+        expect(output).toMatch(/[█▀▄▌▐]/); // Block characters
       } catch (error: any) {
         // If it fails, log the error for debugging
         console.error('Error running CLI with text:', error.message);
+        throw error;
+      }
+    });
+
+    it('should handle newlines in text', () => {
+      try {
+        const output = execSync(`npx tsx ${cliPath} "HELLO\\nWORLD"`, {
+          encoding: 'utf-8',
+          timeout: 5000,
+        });
+        expect(output.length).toBeGreaterThan(0);
+        expect(output).toMatch(/[█▀▄▌▐]/); // Block characters
+      } catch (error: any) {
+        console.error('Error running CLI with newlines:', error.message);
         throw error;
       }
     });
